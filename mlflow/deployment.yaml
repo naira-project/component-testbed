@@ -51,13 +51,12 @@ spec:
               port: 5000
             initialDelaySeconds: 30
             periodSeconds: 10
-          # resources:
-          #   requests:
-          #     memory: 256Mi
-          #     cpu: 250m
-          #   limits:
-          #     memory: 512Mi
-          #     cpu: 500m
+          resources:
+            requests:
+              memory: 2Gi
+              cpu: 250m
+            limits:
+              memory: 4Gi
           volumeMounts:
             - name: mlflow-data
               mountPath: /mlflow/data
