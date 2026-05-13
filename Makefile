@@ -24,7 +24,7 @@ testbed-mlflow-up:
 	$(MAKE) _mlflow-run-seed
 	@echo ""
 	@echo "MLflow testbed is up."
-	@echo "  UI:  make testbed-mlflow-port-forward  →  http://localhost:$(MLFLOW_PORT)"
+	@echo "  UI:  make testbed-mlflow-port-forward  →  http://127.0.0.1:$(MLFLOW_PORT)"
 	@echo "  API: http://$(MLFLOW_SVC).$(MLFLOW_NS).svc.cluster.local:$(MLFLOW_PORT)"
 
 ## Tear down MLflow testbed: delete namespace and all resources.
@@ -50,9 +50,9 @@ testbed-mlflow-status:
 	@echo "=== Flux Kustomization ==="
 	kubectl get kustomization naira-testbed-mlflow -n flux-system 2>/dev/null || echo "(Flux Kustomization not found — apply mlflow/flux-kustomization.yaml to enable Flux reconciliation)"
 
-## Open kubectl port-forward to http://localhost:5000.
+## Open kubectl port-forward to http://127.0.0.1:5000.
 testbed-mlflow-port-forward:
-	@echo ">>> Forwarding http://localhost:$(MLFLOW_PORT) → svc/$(MLFLOW_SVC):$(MLFLOW_PORT)"
+	@echo ">>> Forwarding http://127.0.0.1:$(MLFLOW_PORT) → svc/$(MLFLOW_SVC):$(MLFLOW_PORT)"
 	@echo "    Press Ctrl+C to stop."
 	kubectl port-forward svc/$(MLFLOW_SVC) $(MLFLOW_PORT):$(MLFLOW_PORT) -n $(MLFLOW_NS)
 
