@@ -118,38 +118,93 @@ data:
             print(f"Registered model already exists: {model['name']}")
 
 
-    def seed_versions(client: MlflowClient, model: dict, experiment_id: str) -> None:
-        existing_versions = client.search_model_versions(f"name='{model['name']}'")
+    def parse_seed_index(value):
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            return None
+
+
+    def get_version_seed_index(client: MlflowClient, mv):
+        seed_index = parse_seed_index(mv.tags.get("seed_index"))
+        if seed_index is not None:
+            return seed_index
+
+        # Older seed jobs only wrote the index to the source run.
+        if mv.run_id:
+            try:
+                run = client.get_run(mv.run_id)
+                return parse_seed_index(run.data.tags.get("version_index"))
+            except Exception as exc:
+                print(f"  Could not read source run for version {mv.version}: {exc}")
+
+        return None
+
+
+    def find_existing_seed_versions(client: MlflowClient, model: dict) -> dict:
         expected_count = len(model["versions"])
-        if len(existing_versions) >= expected_count:
-            print(f"  Versions already seeded for {model['name']} ({len(existing_versions)} found), skipping.")
-            return
+        existing_versions = sorted(
+            client.search_model_versions(f"name='{model['name']}'"),
+            key=lambda mv: int(mv.version),
+        )
+        versions_by_index = {}
+        unknown_versions = []
+
+        for mv in existing_versions:
+            seed_index = get_version_seed_index(client, mv)
+            if seed_index is not None and 0 <= seed_index < expected_count and seed_index not in versions_by_index:
+                versions_by_index[seed_index] = mv
+            else:
+                unknown_versions.append(mv)
+
+        # Backfill older or manually-created partial seed data without duplicating it.
+        for mv in unknown_versions:
+            for seed_index in range(expected_count):
+                if seed_index not in versions_by_index:
+                    versions_by_index[seed_index] = mv
+                    print(
+                        f"  Treating existing version {mv.version} for {model['name']} "
+                        f"as seed version {seed_index + 1}."
+                    )
+                    break
+
+        return versions_by_index
+
+
+    def seed_versions(client: MlflowClient, model: dict, experiment_id: str) -> None:
+        existing_versions = find_existing_seed_versions(client, model)
 
         for i, ver_cfg in enumerate(model["versions"]):
-            print(f"  Creating version {i + 1} for {model['name']} (alias: {ver_cfg['alias']})")
+            mv = existing_versions.get(i)
+            if mv is not None:
+                print(f"  Version {i + 1} already exists for {model['name']} as MLflow version {mv.version}.")
+            else:
+                print(f"  Creating version {i + 1} for {model['name']} (alias: {ver_cfg['alias']})")
 
-            with mlflow.start_run(experiment_id=experiment_id) as run:
-                mlflow.set_tags(model["tags"])
-                mlflow.set_tag("model_name", model["name"])
-                mlflow.set_tag("version_index", str(i))
-                for metric_name, value in ver_cfg["metrics"].items():
-                    mlflow.log_metric(metric_name, value)
+                with mlflow.start_run(experiment_id=experiment_id) as run:
+                    mlflow.set_tags(model["tags"])
+                    mlflow.set_tag("model_name", model["name"])
+                    mlflow.set_tag("version_index", str(i))
+                    for metric_name, value in ver_cfg["metrics"].items():
+                        mlflow.log_metric(metric_name, value)
 
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    model_file = os.path.join(tmpdir, "model.txt")
-                    with open(model_file, "w") as f:
-                        f.write(f"Seed placeholder for {model['name']} v{i + 1}\n")
-                    mlflow.log_artifact(model_file, artifact_path="model")
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        model_file = os.path.join(tmpdir, "model.txt")
+                        with open(model_file, "w") as f:
+                            f.write(f"Seed placeholder for {model['name']} v{i + 1}\n")
+                        mlflow.log_artifact(model_file, artifact_path="model")
 
-                artifact_uri = f"{run.info.artifact_uri}/model"
+                    artifact_uri = f"{run.info.artifact_uri}/model"
 
-            mv = client.create_model_version(
-                name=model["name"],
-                source=artifact_uri,
-                run_id=run.info.run_id,
-                description=ver_cfg["description"],
-                tags=ver_cfg["tags"],
-            )
+                mv = client.create_model_version(
+                    name=model["name"],
+                    source=artifact_uri,
+                    run_id=run.info.run_id,
+                    description=ver_cfg["description"],
+                    tags={**ver_cfg["tags"], "seed_index": str(i)},
+                )
 
             # MLflow 3: stages removed, use aliases instead of transition_model_version_stage()
             if ver_cfg["alias"] is not None:
@@ -236,7 +291,12 @@ spec:
           volumeMounts:
             - name: seed-script
               mountPath: /scripts
+            - name: mlflow-data
+              mountPath: /mlflow/data
       volumes:
         - name: seed-script
           configMap:
             name: mlflow-seed-script
+        - name: mlflow-data
+          persistentVolumeClaim:
+            claimName: mlflow-data
