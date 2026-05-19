@@ -12,7 +12,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 5m
-  path: ./mlflow
+  path: ./mlflow/flux
   prune: true
   wait: true
   timeout: 3m

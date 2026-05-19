@@ -291,12 +291,7 @@ spec:
           volumeMounts:
             - name: seed-script
               mountPath: /scripts
-            - name: mlflow-data
-              mountPath: /mlflow/data
       volumes:
         - name: seed-script
           configMap:
             name: mlflow-seed-script
-        - name: mlflow-data
-          persistentVolumeClaim:
-            claimName: mlflow-data

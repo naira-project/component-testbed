@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+# community-charts/mlflow Helm chart values for the Naira testbed.
+
+backendStore:
+  defaultSqlitePath: /mlflow/data/mlflow.db
+
+artifactRoot:
+  # Proxy artifact uploads/downloads through the MLflow server so the seed
+  # job does not need direct filesystem access to the PVC.
+  proxiedArtifactStorage: true
+  defaultArtifactsDestination: /mlflow/data/artifacts
+
+service:
+  # Keep port 5000 to match existing Makefile port-forward target.
+  port: 5000
+
+log:
+  # Must be false: when true the chart injects --gunicorn-opts which conflicts
+  # with --allowed-hosts (only supported on the uvicorn server, not gunicorn).
+  enabled: false
+
+extraArgs:
+  # Allow cluster-internal hostnames (prevents DNS rebinding false positives).
+  allowedHosts: "*"
+
+resources:
+  requests:
+    memory: 2Gi
+    cpu: 250m
+  limits:
+    memory: 4Gi
+
+extraVolumes:
+  - name: mlflow-data
+    persistentVolumeClaim:
+      claimName: mlflow-data
+
+extraVolumeMounts:
+  - name: mlflow-data
+    mountPath: /mlflow/data

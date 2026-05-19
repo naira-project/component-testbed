@@ -5,21 +5,30 @@
 #   FLUX_SOURCE=my-repo make testbed-mlflow-up
 FLUX_SOURCE ?= component-testbed
 
-MLFLOW_NS    := naira-testbed-mlflow
-MLFLOW_DIR   := mlflow
-MLFLOW_SVC   := mlflow
-MLFLOW_PORT  := 5000
+MLFLOW_NS        := naira-testbed-mlflow
+MLFLOW_DIR       := mlflow
+MLFLOW_SVC       := mlflow
+MLFLOW_PORT      := 5000
+MLFLOW_CHART     := mlflow
+MLFLOW_CHART_VER := 1.8.1
+MLFLOW_REPO      := https://community-charts.github.io/helm-charts
 
 .PHONY: testbed-mlflow-up testbed-mlflow-down testbed-mlflow-reset \
         testbed-mlflow-status testbed-mlflow-port-forward testbed-mlflow-seed \
-        _mlflow-wait-ready _mlflow-run-seed
+        _mlflow-run-seed
 
 ## Provision MLflow testbed: deploy + seed sample data.
 testbed-mlflow-up:
-	@echo ">>> Applying MLflow manifests..."
-	kubectl apply -k $(MLFLOW_DIR)/
-	@echo ">>> Waiting for MLflow pod to be ready..."
-	$(MAKE) _mlflow-wait-ready
+	@echo ">>> Creating namespace and PVC..."
+	kubectl apply -f $(MLFLOW_DIR)/namespace.yaml
+	kubectl apply -f $(MLFLOW_DIR)/pvc.yaml
+	@echo ">>> Installing MLflow Helm chart..."
+	helm upgrade --install $(MLFLOW_SVC) $(MLFLOW_CHART) \
+		--repo $(MLFLOW_REPO) \
+		--namespace $(MLFLOW_NS) \
+		--version $(MLFLOW_CHART_VER) \
+		--values $(MLFLOW_DIR)/values.yaml \
+		--wait --timeout 120s
 	@echo ">>> Running seed job..."
 	$(MAKE) _mlflow-run-seed
 	@echo ""
@@ -29,6 +38,8 @@ testbed-mlflow-up:
 
 ## Tear down MLflow testbed: delete namespace and all resources.
 testbed-mlflow-down:
+	@echo ">>> Uninstalling MLflow Helm release..."
+	helm uninstall $(MLFLOW_SVC) -n $(MLFLOW_NS) 2>/dev/null || true
 	@echo ">>> Deleting namespace $(MLFLOW_NS)..."
 	kubectl delete namespace $(MLFLOW_NS) --ignore-not-found --wait=true
 	@echo "MLflow testbed removed."
@@ -47,6 +58,9 @@ testbed-mlflow-status:
 	@echo "=== PVCs ==="
 	kubectl get pvc -n $(MLFLOW_NS) 2>/dev/null || true
 	@echo ""
+	@echo "=== Helm release ==="
+	helm status $(MLFLOW_SVC) -n $(MLFLOW_NS) 2>/dev/null || echo "(Helm release not found)"
+	@echo ""
 	@echo "=== Flux Kustomization ==="
 	kubectl get kustomization naira-testbed-mlflow -n flux-system 2>/dev/null || echo "(Flux Kustomization not found — apply mlflow/flux-kustomization.yaml to enable Flux reconciliation)"
 
@@ -61,9 +75,6 @@ testbed-mlflow-seed:
 	$(MAKE) _mlflow-run-seed
 
 # --- internal targets ---
-
-_mlflow-wait-ready:
-	kubectl rollout status deployment/$(MLFLOW_SVC) -n $(MLFLOW_NS) --timeout=120s
 
 _mlflow-run-seed:
 	@echo ">>> Deleting previous seed job (if any)..."

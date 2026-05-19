@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# Flux-specific overlay: extends the base with HelmRepository and HelmRelease CRs.
+# Requires Flux (source-controller + helm-controller) installed in the cluster.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../namespace.yaml
+  - ../pvc.yaml
+  - helm-repository.yaml
+  - helm-release.yaml
