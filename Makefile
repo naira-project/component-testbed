@@ -206,11 +206,17 @@ FORCE            ?= false
 
 ## [PLATFORM] Deploy the OpenBao platform component and ESO via Flux/Kustomize.
 platform-openbao-up:
-	@echo ">>> Applying OpenBao platform manifests..."
+	@echo ">>> Applying OpenBao platform manifests (namespaces, HelmReleases, RBAC)..."
 	kubectl apply -k $(OPENBAO_DIR)/
 	@echo ">>> Applying Flux Kustomization CR (optional — requires Flux in cluster)..."
 	kubectl apply -f $(OPENBAO_DIR)/flux-kustomization.yaml 2>/dev/null || \
 	  echo "    (Flux not available — manifests applied directly above)"
+	@echo ">>> Waiting for ESO CRDs to be installed by Flux Helm controller..."
+	@until kubectl get crd clustersecretstores.external-secrets.io >/dev/null 2>&1; do \
+	  echo "    ... waiting for clustersecretstores CRD"; sleep 5; \
+	done
+	@echo ">>> Applying ClusterSecretStore (requires ESO CRDs)..."
+	kubectl apply -f $(OPENBAO_DIR)/eso/clustersecretstore.yaml
 	@echo ""
 	@echo "OpenBao platform component applied."
 	@echo "  OpenBao will start but remain sealed until you run:"
@@ -315,7 +321,7 @@ _openbao-require-token:
 
 _openbao-wait-ready:
 	@echo ">>> Waiting for OpenBao pod to be ready (may take 60–90s on first deploy)..."
-	kubectl rollout status statefulset/openbao -n $(OPENBAO_NS) --timeout=180s
+	kubectl wait pod/openbao-0 -n $(OPENBAO_NS) --for=condition=Ready --timeout=180s
 
 _openbao-run-init:
 	@echo ">>> Deleting previous init job (if any)..."
@@ -324,7 +330,16 @@ _openbao-run-init:
 	kubectl apply -f $(OPENBAO_DIR)/init-job.yaml
 	@echo ">>> Waiting for init job to complete..."
 	kubectl wait --for=condition=complete job/openbao-init -n $(OPENBAO_NS) --timeout=120s
-	@echo ">>> Init job finished. Follow the post-init instructions above."
+	@echo ">>> Init job finished."
+	@echo ""
+	@echo ">>> Restarting OpenBao pod so unsealer sidecar picks up the unseal key..."
+	@echo "    (StatefulSet uses OnDelete — pod must be deleted manually)"
+	kubectl delete pod openbao-0 -n $(OPENBAO_NS)
+	@echo ">>> Waiting for OpenBao pod to be ready and unsealed..."
+	kubectl wait pod/openbao-0 -n $(OPENBAO_NS) --for=condition=Ready --timeout=120s
+	@echo ""
+	@echo "OpenBao initialized and unsealed."
+	@echo "  Next steps printed above by the init job."
 
 _openbao-run-seed:
 	@echo ">>> Creating openbao-seed-input Secret from .env.testbed..."

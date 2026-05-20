@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: openbao
-      version: "0.28.*"
+      version: "0.28.2"
       sourceRef:
         kind: HelmRepository
         name: openbao
@@ -62,7 +62,7 @@ spec:
       # if no key is present yet the sidecar sleeps until the pod is restarted after init.
       extraContainers:
         - name: unsealer
-          image: openbao/openbao:v2.5.3
+          image: openbao/openbao:2.5.3
           env:
             - name: BAO_ADDR
               value: "http://127.0.0.1:8200"

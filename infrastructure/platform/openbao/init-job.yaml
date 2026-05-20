@@ -26,31 +26,32 @@ metadata:
     app.kubernetes.io/part-of: naira-platform
     app.kubernetes.io/component: openbao
 spec:
-  ttlSecondsAfterFinished: 600
-  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 1
   template:
     metadata:
       labels:
         app.kubernetes.io/name: openbao-init
         app.kubernetes.io/part-of: naira-platform
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: Never
       serviceAccountName: openbao-init
 
       initContainers:
         - name: bao-init
-          image: openbao/openbao:v2.5.3
+          image: openbao/openbao:2.5.3
           env:
             - name: BAO_ADDR
-              value: "http://openbao-active.naira-platform-openbao.svc.cluster.local:8200"
+              value: "http://openbao-0.openbao-internal.naira-platform-openbao.svc.cluster.local:8200"
           command: ["/bin/sh", "-c"]
           args:
             - |
               set -eu
 
               echo ">>> Waiting for OpenBao to be reachable..."
-              until bao status >/dev/null 2>&1 || \
-                    bao status 2>&1 | grep -qE "Sealed|Initialized|Error Checking"; do
+              until wget -q -O- http://127.0.0.1:8200/v1/sys/health 2>/dev/null || \
+                    bao status 2>/dev/null || \
+                    bao status 2>&1 | grep -qiE "sealed|initialized"; do
                 sleep 3
               done
               echo ">>> OpenBao is reachable."
@@ -60,17 +61,22 @@ spec:
 
               if [ "$INIT_STATUS" = "true" ]; then
                 echo ">>> OpenBao already initialized — writing sentinel."
-                echo '{"already_initialized": true}' > /shared/init-output.json
+                echo "already_initialized" > /shared/status
                 exit 0
               fi
 
               echo ">>> Initializing OpenBao (key-shares=1, key-threshold=1)..."
-              bao operator init \
-                -key-shares=1 \
-                -key-threshold=1 \
-                -format=json > /shared/init-output.json
+              bao operator init -key-shares=1 -key-threshold=1 -format=json \
+                > /shared/init-output.json
 
-              echo ">>> Init output saved to shared volume."
+              # awk handles multi-line pretty-printed JSON reliably
+              awk '/"unseal_keys_b64"/{getline; gsub(/[^A-Za-z0-9+\/=]/, ""); print; exit}' \
+                /shared/init-output.json > /shared/unseal_key
+              awk -F'"' '/"root_token"/{print $4; exit}' \
+                /shared/init-output.json > /shared/root_token
+              echo "ok" > /shared/status
+
+              echo ">>> Keys written to shared volume."
           resources:
             requests:
               memory: 64Mi
@@ -94,19 +100,18 @@ spec:
             - |
               set -eu
 
-              if grep -q '"already_initialized": true' /shared/init-output.json; then
+              STATUS=$(cat /shared/status 2>/dev/null || echo "")
+              if [ "$STATUS" = "already_initialized" ]; then
                 echo ">>> OpenBao already initialized — nothing to do."
                 exit 0
               fi
 
-              UNSEAL_KEY=$(grep -o '"unseal_keys_b64":[^]]*\]' /shared/init-output.json \
-                | grep -o '"[A-Za-z0-9+/=]*"' | head -1 | tr -d '"')
-              ROOT_TOKEN=$(grep -o '"root_token":"[^"]*"' /shared/init-output.json \
-                | awk -F'"' '{print $4}')
+              UNSEAL_KEY=$(cat /shared/unseal_key 2>/dev/null || echo "")
+              ROOT_TOKEN=$(cat /shared/root_token 2>/dev/null || echo "")
 
               if [ -z "$UNSEAL_KEY" ] || [ -z "$ROOT_TOKEN" ]; then
-                echo "ERROR: failed to parse init output"
-                cat /shared/init-output.json
+                echo "ERROR: unseal_key or root_token missing in shared volume"
+                ls -la /shared/ || true
                 exit 1
               fi
 
@@ -138,8 +143,8 @@ spec:
               echo "         > infrastructure/platform/openbao/unseal-keys-sealed.yaml"
               echo ""
               echo "  2. Commit unseal-keys-sealed.yaml and add it to kustomization.yaml."
-              echo "  3. Restart pod: kubectl rollout restart statefulset/openbao \\"
-              echo "       -n naira-platform-openbao"
+              echo "  3. Restart pod (OnDelete strategy — must delete manually):"
+              echo "       kubectl delete pod openbao-0 -n naira-platform-openbao"
               echo "  4. Run: make platform-openbao-seed"
               echo "=========================================================="
           resources:
