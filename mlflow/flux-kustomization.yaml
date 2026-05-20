@@ -19,4 +19,3 @@ spec:
   sourceRef:
     kind: GitRepository
     name: component-testbed
-  targetNamespace: naira-testbed-mlflow
