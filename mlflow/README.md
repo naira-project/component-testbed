@@ -13,6 +13,7 @@ The Naira MLflow Sync Controller translates MLflow Registered Models and Model V
 - `kubectl` configured against a Kubernetes cluster (Minikube is supported)
 - `helm`
 - `make`
+- `envsubst`
 - Flux installed (source-controller + helm-controller) and a `GitRepository` named `component-testbed` pointing to this repo
 
 ## Quick Start
@@ -47,11 +48,11 @@ make testbed-mlflow-down
 
 The seed job (`seed-job.yaml`) populates the Model Registry with:
 
-| Model                 | Versions | Aliases                   |
-| --------------------- | -------- | ------------------------- |
-| `text-classifier-v1`  | 2        | staging, production       |
+| Model                 | Versions | Aliases                     |
+| --------------------- | -------- | --------------------------- |
+| `text-classifier-v1`  | 2        | staging, production         |
 | `sentiment-analyzer`  | 3        | (none), staging, production |
-| `summarization-model` | 2        | staging, production       |
+| `summarization-model` | 2        | staging, production         |
 
 Each version includes tags (`framework`, `task`, `validated_by`) and logged metrics (`accuracy`/`f1_score`/`latency_ms` or `rouge1`/`rouge2`/`latency_ms`).
 
