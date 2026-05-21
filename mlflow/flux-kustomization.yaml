@@ -1,9 +1,7 @@
-# SPDX-License-Identifier: Apache-2.0
-#
 # Flux Kustomization CR — applied by `make testbed-mlflow-up` when FLUX_SOURCE is set.
 # Not included in kustomization.yaml resources (avoids self-referencing loop).
 #
-# Required: a Flux GitRepository named $(FLUX_SOURCE) must exist in flux-system.
+# Required: a Flux GitRepository named ${FLUX_SOURCE} must exist in flux-system.
 # Override: FLUX_SOURCE=my-repo make testbed-mlflow-up
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -12,10 +10,10 @@ metadata:
   namespace: flux-system
 spec:
   interval: 5m
-  path: ./mlflow/flux
+  path: ./mlflow
   prune: true
   wait: true
   timeout: 3m
   sourceRef:
     kind: GitRepository
-    name: component-testbed
+    name: ${FLUX_SOURCE}

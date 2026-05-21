@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-
 # Flux GitRepository source name pointing to this repo.
 # Override if your GitRepository has a different name:
 #   FLUX_SOURCE=my-repo make testbed-mlflow-up
@@ -9,9 +7,6 @@ MLFLOW_NS        := naira-testbed-mlflow
 MLFLOW_DIR       := mlflow
 MLFLOW_SVC       := mlflow
 MLFLOW_PORT      := 5000
-MLFLOW_CHART     := mlflow
-MLFLOW_CHART_VER := 1.8.1
-MLFLOW_REPO      := https://community-charts.github.io/helm-charts
 
 .PHONY: testbed-mlflow-up testbed-mlflow-down testbed-mlflow-reset \
         testbed-mlflow-status testbed-mlflow-port-forward testbed-mlflow-seed \
@@ -19,16 +14,10 @@ MLFLOW_REPO      := https://community-charts.github.io/helm-charts
 
 ## Provision MLflow testbed: deploy + seed sample data.
 testbed-mlflow-up:
-	@echo ">>> Creating namespace and PVC..."
-	kubectl apply -f $(MLFLOW_DIR)/namespace.yaml
-	kubectl apply -f $(MLFLOW_DIR)/pvc.yaml
-	@echo ">>> Installing MLflow Helm chart..."
-	helm upgrade --install $(MLFLOW_SVC) $(MLFLOW_CHART) \
-		--repo $(MLFLOW_REPO) \
-		--namespace $(MLFLOW_NS) \
-		--version $(MLFLOW_CHART_VER) \
-		--values $(MLFLOW_DIR)/values.yaml \
-		--wait --timeout 120s
+	@echo ">>> Applying Flux Kustomization..."
+	FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(MLFLOW_DIR)/flux-kustomization.yaml | kubectl apply -f -
+	@echo ">>> Waiting for Flux reconciliation..."
+	kubectl wait --for=condition=ready kustomization/$(MLFLOW_NS) -n flux-system --timeout=180s
 	@echo ">>> Running seed job..."
 	$(MAKE) _mlflow-run-seed
 	@echo ""
@@ -38,6 +27,8 @@ testbed-mlflow-up:
 
 ## Tear down MLflow testbed: delete namespace and all resources.
 testbed-mlflow-down:
+	@echo ">>> Removing Flux Kustomization..."
+	kubectl delete kustomization $(MLFLOW_NS) -n flux-system --ignore-not-found
 	@echo ">>> Uninstalling MLflow Helm release..."
 	helm uninstall $(MLFLOW_SVC) -n $(MLFLOW_NS) 2>/dev/null || true
 	@echo ">>> Deleting namespace $(MLFLOW_NS)..."

@@ -2,7 +2,7 @@
 
 Reproducible MLflow Tracking Server and Model Registry for developing and testing the Naira MLflow Sync Plugin.
 
-Deployed as a Kubernetes workload in namespace `naira-testbed-mlflow`, managed via Kustomize (with Helm chart inflation) and optionally reconciled by Flux.
+Deployed as a Kubernetes workload in namespace `naira-testbed-mlflow`, reconciled by Flux.
 
 ## Purpose
 
@@ -13,12 +13,12 @@ The Naira MLflow Sync Controller translates MLflow Registered Models and Model V
 - `kubectl` configured against a Kubernetes cluster (Minikube is supported)
 - `helm`
 - `make`
-- For Flux reconciliation: Flux installed (source-controller + helm-controller) and a `GitRepository` named `component-testbed` pointing to this repo
+- Flux installed (source-controller + helm-controller) and a `GitRepository` named `component-testbed` pointing to this repo
 
 ## Quick Start
 
 ```bash
-# Provision MLflow and seed sample data (~2 min)
+# Reconcile MLflow via Flux and seed sample data (~2 min)
 make testbed-mlflow-up
 
 # Access the UI locally
@@ -82,7 +82,7 @@ import mlflow
 mlflow.set_tracking_uri("http://mlflow.naira-testbed-mlflow.svc.cluster.local:5000")
 ```
 
-## Flux Reconciliation (Optional)
+## Flux Reconciliation
 
 If Flux is installed (source-controller + helm-controller), apply `flux-kustomization.yaml` to enable GitOps reconciliation:
 
@@ -94,19 +94,19 @@ FLUX_SOURCE=component-testbed envsubst < mlflow/flux-kustomization.yaml | kubect
 make testbed-mlflow-status
 ```
 
-Flux applies the `mlflow/flux/` overlay, which creates a `HelmRepository` and `HelmRelease`. The helm-controller then installs the chart. Flux will re-apply automatically on every push.
+Flux applies `mlflow/kustomization.yaml`, which creates a `GitRepository` for `mlflow/mlflow` and a `HelmRelease`. The helm-controller then installs the official chart from the pinned Git commit. Flux will re-apply automatically on every push.
 
 ## Architecture
 
 ```
 naira-testbed-mlflow namespace
-├── Deployment/mlflow          — MLflow Tracking Server (community-charts/mlflow v1.8.1)
-│     image: burakince/mlflow:3.7.0
-│     backend: SQLite at /mlflow/data/mlflow.db
-│     artifacts: /mlflow/data/artifacts (proxied through server)
+├── Deployment/mlflow          — MLflow Tracking Server (official mlflow/mlflow chart)
+│     image: ghcr.io/mlflow/mlflow:v3.12.0-full
+│     backend: SQLite at /mlflow/mlflow.db
+│     artifacts: /mlflow/artifacts (proxied through server)
 │     resources: 250m CPU, 2Gi–4Gi RAM
 ├── Service/mlflow             — ClusterIP :5000
-├── PersistentVolumeClaim      — 1Gi (data survives pod restarts)
+├── PersistentVolumeClaim/mlflow — 1Gi (data survives pod restarts)
 └── Job/mlflow-seed            — one-shot Python seed job (idempotent)
 ```
 
@@ -116,14 +116,10 @@ No Ingress is configured. Use `make testbed-mlflow-port-forward` for local brows
 
 ```
 mlflow/
-├── kustomization.yaml        # Kustomize base: namespace + pvc only
-├── values.yaml               # Helm chart values (community-charts/mlflow v1.8.1)
-├── flux-kustomization.yaml   # Flux Kustomization CR pointing to mlflow/flux/
+├── kustomization.yaml        # Namespace + GitRepository + HelmRelease
+├── flux-kustomization.yaml   # Flux Kustomization CR pointing to mlflow/
+├── git-repository.yaml       # Flux GitRepository (mlflow/mlflow, pinned commit)
+├── helm-release.yaml         # Flux HelmRelease for official chart path ./charts
 ├── namespace.yaml
-├── pvc.yaml
-├── seed-job.yaml             # ConfigMap (seed.py) + Job
-└── flux/
-    ├── kustomization.yaml    # Flux overlay: namespace + pvc + HelmRepository + HelmRelease
-    ├── helm-repository.yaml  # Flux HelmRepository (community-charts, flux-system ns)
-    └── helm-release.yaml     # Flux HelmRelease for community-charts/mlflow
+└── seed-job.yaml             # ConfigMap (seed.py) + Job
 ```
