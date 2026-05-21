@@ -14,7 +14,10 @@ The Naira MLflow Sync Controller translates MLflow Registered Models and Model V
 - `helm`
 - `make`
 - `envsubst`
-- Flux installed (source-controller + helm-controller) and a `GitRepository` named `component-testbed` pointing to this repo
+- Flux installed (source-controller + helm-controller)
+- A Flux `GitRepository` in `flux-system` that points to this repo
+  - By default, `make testbed-mlflow-up` expects that source to be named `component-testbed`
+  - If your source has a different name, pass it via `FLUX_SOURCE=<name>`
 
 ## Quick Start
 
@@ -96,6 +99,35 @@ make testbed-mlflow-status
 ```
 
 Flux applies `mlflow/kustomization.yaml`, which creates a `GitRepository` for `mlflow/mlflow` and a `HelmRelease`. The helm-controller then installs the official chart from the pinned Git commit. Flux will re-apply automatically on every push.
+
+### Common Error: `GitRepository.source.toolkit.fluxcd.io "component-testbed" not found`
+
+This happens when Flux is installed, but there is no `GitRepository` source in `flux-system` for this repository. `make testbed-mlflow-up` only creates the MLflow `Kustomization`; it does not bootstrap Flux against this repo or create that source for you.
+
+Check which sources already exist:
+
+```bash
+kubectl get gitrepositories -n flux-system
+```
+
+Then fix it in one of these ways:
+
+```bash
+# Option 1: Reuse an existing source name
+FLUX_SOURCE=<existing-gitrepository> make testbed-mlflow-up
+```
+
+```bash
+# Option 2: Create a source for this repo and keep the default name
+flux create source git component-testbed \
+  --url=<repo-url> \
+  --branch=<branch> \
+  --namespace=flux-system
+
+make testbed-mlflow-up
+```
+
+If you bootstrap Flux from this repository, Flux will usually create the matching source automatically. The important part is that the `spec.sourceRef.name` in `mlflow/flux-kustomization.yaml` must match a real `GitRepository` in `flux-system`.
 
 ## Architecture
 

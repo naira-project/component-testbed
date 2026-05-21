@@ -10,10 +10,11 @@ MLFLOW_PORT      := 5000
 
 .PHONY: testbed-mlflow-up testbed-mlflow-down testbed-mlflow-reset \
         testbed-mlflow-status testbed-mlflow-port-forward testbed-mlflow-seed \
-        _mlflow-run-seed
+        _mlflow-run-seed _mlflow-check-flux-source
 
 ## Provision MLflow testbed: deploy + seed sample data.
 testbed-mlflow-up:
+	@$(MAKE) _mlflow-check-flux-source
 	@echo ">>> Applying Flux Kustomization..."
 	FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(MLFLOW_DIR)/flux-kustomization.yaml | kubectl apply -f -
 	@echo ">>> Waiting for Flux reconciliation..."
@@ -66,6 +67,24 @@ testbed-mlflow-seed:
 	$(MAKE) _mlflow-run-seed
 
 # --- internal targets ---
+
+_mlflow-check-flux-source:
+	@kubectl get gitrepository $(FLUX_SOURCE) -n flux-system >/dev/null 2>&1 || { \
+		echo "ERROR: Flux GitRepository '$(FLUX_SOURCE)' was not found in namespace 'flux-system'."; \
+		echo ""; \
+		echo "make testbed-mlflow-up applies a Flux Kustomization that expects an existing"; \
+		echo "GitRepository source pointing at this repository."; \
+		echo ""; \
+		echo "Fix one of these first:"; \
+		echo "  1. Reuse an existing Flux source:"; \
+		echo "     FLUX_SOURCE=<existing-gitrepository> make testbed-mlflow-up"; \
+		echo "  2. Create a Flux source for this repo in flux-system, for example:"; \
+		echo "     flux create source git $(FLUX_SOURCE) --url=<repo-url> --branch=<branch> --namespace=flux-system"; \
+		echo ""; \
+		echo "You can inspect available sources with:"; \
+		echo "  kubectl get gitrepositories -n flux-system"; \
+		exit 1; \
+	}
 
 _mlflow-run-seed:
 	@echo ">>> Deleting previous seed job (if any)..."
