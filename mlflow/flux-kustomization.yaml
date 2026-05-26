@@ -1,0 +1,19 @@
+# Flux Kustomization CR — applied by `make testbed-mlflow-up` when FLUX_SOURCE is set.
+# Not included in kustomization.yaml resources (avoids self-referencing loop).
+#
+# Required: a Flux GitRepository named ${FLUX_SOURCE} must exist in flux-system.
+# Override: FLUX_SOURCE=my-repo make testbed-mlflow-up
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: naira-testbed-mlflow
+  namespace: flux-system
+spec:
+  interval: 5m
+  path: ./mlflow
+  prune: true
+  wait: true
+  timeout: 3m
+  sourceRef:
+    kind: GitRepository
+    name: ${FLUX_SOURCE}
