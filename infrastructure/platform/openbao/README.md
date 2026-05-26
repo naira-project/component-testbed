@@ -39,14 +39,14 @@ Engineering team and consumed by every plugin via External Secrets Operator (ESO
 
 ### Who does what
 
-| Action | Owner |
-|--------|-------|
-| Deploy / init / reset / upgrade | Platform Engineering |
-| Seed secrets from `.env.testbed` | Platform Engineering |
-| Add a new reserved path | Platform Engineering (PR to this directory) |
-| Check seal status, list seeded paths | Any developer |
-| Declare `ExternalSecret` and consume secrets | Any plugin developer |
-| Write to `secret/scratch/<username>/*` | Any developer (self-service) |
+| Action                                       | Owner                                       |
+| -------------------------------------------- | ------------------------------------------- |
+| Deploy / init / reset / upgrade              | Platform Engineering                        |
+| Seed secrets from `.env.testbed`             | Platform Engineering                        |
+| Add a new reserved path                      | Platform Engineering (PR to this directory) |
+| Check seal status, list seeded paths         | Any developer                               |
+| Declare `ExternalSecret` and consume secrets | Any plugin developer                        |
+| Write to `secret/scratch/<username>/*`       | Any developer (self-service)                |
 
 ---
 
@@ -172,15 +172,19 @@ make platform-openbao-upgrade
 ### First-time environment setup
 
 1. **Deploy the platform component**:
+
    ```bash
    make platform-openbao-up
    ```
+
    OpenBao starts but remains sealed (no unseal key yet).
 
 2. **Initialize OpenBao**:
+
    ```bash
    make platform-openbao-init
    ```
+
    This runs the init job, which calls `bao operator init` and writes the unseal
    key and root token to the `openbao-unseal-keys` Secret. The job prints
    detailed post-init instructions in its log.
@@ -188,6 +192,7 @@ make platform-openbao-upgrade
 3. **Encrypt and commit the unseal key** (mandatory — do not skip):
 
    **With SealedSecrets:**
+
    ```bash
    kubeseal --fetch-cert --controller-namespace kube-system \
      > /tmp/sealed-secrets-cert.pem
@@ -200,6 +205,7 @@ make platform-openbao-upgrade
    ```
 
    **With SOPS + AGE:**
+
    ```bash
    kubectl get secret openbao-unseal-keys \
      -n naira-platform-openbao -o yaml \
@@ -210,6 +216,7 @@ make platform-openbao-upgrade
    ```
 
    Then add `unseal-keys-sealed.yaml` to `kustomization.yaml` resources and commit:
+
    ```bash
    git add infrastructure/platform/openbao/unseal-keys-sealed.yaml
    git add infrastructure/platform/openbao/kustomization.yaml
@@ -217,6 +224,7 @@ make platform-openbao-upgrade
    ```
 
 4. **Restart the OpenBao pod** so the unsealer sidecar picks up the key:
+
    ```bash
    kubectl rollout restart statefulset/openbao -n naira-platform-openbao
    kubectl rollout status statefulset/openbao -n naira-platform-openbao
@@ -282,18 +290,19 @@ spec:
     name: openbao-platform
     kind: ClusterSecretStore
   target:
-    name: my-secret          # resulting Kubernetes Secret name
+    name: my-secret # resulting Kubernetes Secret name
     creationPolicy: Owner
   data:
-    - secretKey: api_key     # key in the resulting k8s Secret
+    - secretKey: api_key # key in the resulting k8s Secret
       remoteRef:
-        key: testbed/litellm/mistral   # path in OpenBao (without "secret/")
-        property: api_key              # field within the KV entry
+        key: testbed/litellm/mistral # path in OpenBao (without "secret/")
+        property: api_key # field within the KV entry
 ```
 
 ### Per-plugin examples
 
 **LiteLLM — Mistral API key**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -304,6 +313,7 @@ spec:
 ```
 
 **LiteLLM — OpenAI API key**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -314,6 +324,7 @@ spec:
 ```
 
 **LiteLLM — Azure OpenAI**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -328,6 +339,7 @@ spec:
 ```
 
 **Langfuse API credentials**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -342,6 +354,7 @@ spec:
 ```
 
 **Grafana admin credentials**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -354,6 +367,7 @@ spec:
 ```
 
 **ArgoCD admin credentials**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -364,6 +378,7 @@ spec:
 ```
 
 **OpenMetadata admin credentials**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -376,6 +391,7 @@ spec:
 ```
 
 **KServe model registry**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -388,6 +404,7 @@ spec:
 ```
 
 **MLflow S3 artifact store credentials**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -402,6 +419,7 @@ spec:
 ```
 
 **Demo hello secret (smoke-test)**
+
 ```yaml
 spec:
   secretStoreRef: { name: openbao-platform, kind: ClusterSecretStore }
@@ -415,22 +433,22 @@ spec:
 
 ## 7. Secret path reference
 
-| OpenBao path | Fields | Source env var(s) |
-|---|---|---|
-| `secret/testbed/litellm/mistral` | `api_key` | `LITELLM_MISTRAL_API_KEY` |
-| `secret/testbed/litellm/openai` | `api_key` | `LITELLM_OPENAI_API_KEY` |
-| `secret/testbed/litellm/anthropic` | `api_key` | `LITELLM_ANTHROPIC_API_KEY` |
-| `secret/testbed/litellm/azure-openai` | `api_key`, `api_base`, `api_version` | `LITELLM_AZURE_OPENAI_*` |
-| `secret/testbed/mlflow/s3` | `access_key`, `secret_key`, `endpoint_url` | `MLFLOW_S3_*` |
-| `secret/testbed/openmetadata/admin` | `username`, `password` | `OPENMETADATA_ADMIN_*` |
-| `secret/testbed/argocd/admin` | `username`, `password` | `ARGOCD_ADMIN_*` |
-| `secret/testbed/grafana/admin` | `username`, `password` | `GRAFANA_ADMIN_*` |
-| `secret/testbed/langfuse/api` | `public_key`, `secret_key`, `host` | `LANGFUSE_*` |
-| `secret/testbed/kserve/model-registry` | `url`, `token` | `KSERVE_MODEL_REGISTRY_*` |
-| `secret/testbed/opendatahub/admin` | `username`, `password` | `OPENDATAHUB_ADMIN_*` |
-| `secret/demo/hello` | `message`, `platform` | — (always written) |
-| `secret/demo/connection` | `host`, `port`, `tls` | — (always written) |
-| `secret/scratch/<username>/*` | any | developer self-service |
+| OpenBao path                           | Fields                                     | Source env var(s)           |
+| -------------------------------------- | ------------------------------------------ | --------------------------- |
+| `secret/testbed/litellm/mistral`       | `api_key`                                  | `LITELLM_MISTRAL_API_KEY`   |
+| `secret/testbed/litellm/openai`        | `api_key`                                  | `LITELLM_OPENAI_API_KEY`    |
+| `secret/testbed/litellm/anthropic`     | `api_key`                                  | `LITELLM_ANTHROPIC_API_KEY` |
+| `secret/testbed/litellm/azure-openai`  | `api_key`, `api_base`, `api_version`       | `LITELLM_AZURE_OPENAI_*`    |
+| `secret/testbed/mlflow/s3`             | `access_key`, `secret_key`, `endpoint_url` | `MLFLOW_S3_*`               |
+| `secret/testbed/openmetadata/admin`    | `username`, `password`                     | `OPENMETADATA_ADMIN_*`      |
+| `secret/testbed/argocd/admin`          | `username`, `password`                     | `ARGOCD_ADMIN_*`            |
+| `secret/testbed/grafana/admin`         | `username`, `password`                     | `GRAFANA_ADMIN_*`           |
+| `secret/testbed/langfuse/api`          | `public_key`, `secret_key`, `host`         | `LANGFUSE_*`                |
+| `secret/testbed/kserve/model-registry` | `url`, `token`                             | `KSERVE_MODEL_REGISTRY_*`   |
+| `secret/testbed/opendatahub/admin`     | `username`, `password`                     | `OPENDATAHUB_ADMIN_*`       |
+| `secret/demo/hello`                    | `message`, `platform`                      | — (always written)          |
+| `secret/demo/connection`               | `host`, `port`, `tls`                      | — (always written)          |
+| `secret/scratch/<username>/*`          | any                                        | developer self-service      |
 
 Path stability guarantee: once a path under `secret/testbed/` is published, it is
 not renamed without a deprecation notice. Paths are part of the public contract
@@ -443,11 +461,11 @@ with plugin authors.
 This deployment makes deliberate trade-offs that are acceptable for a test
 environment but must NOT be replicated in production.
 
-| Compromise | Production requirement |
-|---|---|
+| Compromise                                                                          | Production requirement                                                                          |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | Unseal key stored in a Kubernetes Secret (base64, not encrypted at rest by default) | Real auto-unseal via cloud KMS (AWS KMS, GCP Cloud KMS, Azure Key Vault) or Transit auto-unseal |
-| HTTP listener — no TLS | TLS with valid certificates; mTLS for inter-node Raft |
-| Single Raft node — no high availability | 3+ node Raft cluster for quorum |
-| Audit logging disabled (keeps stdout noise low) | Audit log to file or syslog, retained for compliance |
-| Root token used by seed job | Short-lived, narrowly-scoped tokens via AppRole or OIDC |
-| No backup/restore workflow | Regular Raft snapshots with offsite storage |
+| HTTP listener — no TLS                                                              | TLS with valid certificates; mTLS for inter-node Raft                                           |
+| Single Raft node — no high availability                                             | 3+ node Raft cluster for quorum                                                                 |
+| Audit logging disabled (keeps stdout noise low)                                     | Audit log to file or syslog, retained for compliance                                            |
+| Root token used by seed job                                                         | Short-lived, narrowly-scoped tokens via AppRole or OIDC                                         |
+| No backup/restore workflow                                                          | Regular Raft snapshots with offsite storage                                                     |

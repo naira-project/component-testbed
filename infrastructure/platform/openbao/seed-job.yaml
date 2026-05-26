@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-#
 # Idempotent seed job — run by Platform Engineering via:
 #   make platform-openbao-seed
 #
@@ -267,7 +265,7 @@ spec:
       serviceAccountName: openbao-seed
       containers:
         - name: seed
-          image: openbao/openbao:v2.5.3
+          image: openbao/openbao:2.5.3
           env:
             - name: BAO_ADDR
               value: "http://openbao-active.naira-platform-openbao.svc.cluster.local:8200"

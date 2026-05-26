@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-#
 # RBAC for the platform-openbao init and seed jobs.
 # The OpenBao server's own ServiceAccount is created and managed by the Helm chart.
 # We bind system:auth-delegator to that chart-managed SA so OpenBao can verify

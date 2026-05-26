@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-#
 # Flux Kustomization CR for the OpenBao platform component.
 # Applied by `make platform-openbao-up` alongside the regular kustomization.
 # NOT included in kustomization.yaml resources — avoids a self-referencing loop.

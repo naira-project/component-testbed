@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-#
 # Grant external-secrets SA system:auth-delegator so it can present its own
 # ServiceAccount token to OpenBao's Kubernetes auth method and have OpenBao
 # verify that token via the TokenReview API.

@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-#
 # One-time initialization job — run by Platform Engineering via:
 #   make platform-openbao-init
 #
