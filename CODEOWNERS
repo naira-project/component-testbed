@@ -3,4 +3,4 @@
 
 # Platform infrastructure — requires Platform Engineering review.
 # Developers cannot merge changes here without platform team approval.
-/infrastructure/platform/** @naira-project/platform-engineering
+/infrastructure/platform/** @naira-project/auto
