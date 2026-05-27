@@ -1,19 +1,45 @@
----
-apiVersion: bitnami.com/v1alpha1
-kind: SealedSecret
-metadata:
-  annotations:
-    sealedsecrets.bitnami.com/namespace-wide: "true"
-  name: openbao-unseal-keys
-  namespace: naira-platform-openbao
-spec:
-  encryptedData:
-    root_token: AgBvaHssgq9nQ2oX4WwVzr8HZBq06eK5f3fNBWwkzyhK5+2RYD6emeEdrTdOnu5IrKc6pk5WVCBCTesij1Apn1JCUoAWgA6ysZtxHvJ4ztQ34RMerbLqPUYvfBfHexJSk4y9fYXfiVTjR+FaGO+2KgI3wy3n7B7//bjsfl9LbaiW8HEQ0/V1bPugOOZn5kCOIz9ij2j20OsQFtelAe4c5VHcvgzkhOHKf8xCy+jEfGZO9J1c5JIVWWNGCwLZgzMCkc82qGn2hnZm5bLohcOuP5FGZ2Ms1JVHROeESdKlXdpKIGhNtsJN7wdJEiKrJ39i37uDgkK5oykeWbw7+Of31Bl0/CxyGLYis2cmVc6YroNMcADkei044wBqIpWFPVuHFFh7A2kypT9CrOLCTFk4RG73kkHXyApPcm6PYC4Dl9QbpPpE3/1ng9usdljXev0kMyJLxAQrrjhhEWD8ACUFSHrkGisCyIjQW88iFy/t9DKT1fxXDysBZKkRu01mOrE71IKz3UwSQM3ToeCyNZ+0OsIdcJaYtaqdNx8OOBHS++K1kmj44lQQ0MqDxF5KLAeS+EMO/T0CS3QvTZQacCSfrfWBRe3RLIwd6daoFkGcDKxzwBU21foancmiObKwvjdEVWDP0MMecahY5FGs/WzLjTB8yIKDRhq10Tx7iw1BeusyleSYysYUG307oNbgt7YbzuiUDXxlVuVPLHPhUbufufp4WRqGj4zp5aTEvw==
-    unseal_key: AgAwN15Jsn5rVBxTyuPM7UOKcjpfKmIYPe/rNqs5ONxyCWaunpw89QE/Jl+GFkxAElYbFA0UerQeNh6EVtUNwn7tUlXfCdQGvd0fRZSIFC2ZmEFJ+uW4grGEQiTw5RukXAYLi04fBdga/vlPuC1RP/6OrTFAYowhq9dAvh8On1sgHCVy/I04HrIFtPuB/yA5sSonfAblxCICHECKiv6T5Q+6HPPdD6Qrj4lX6alAW+hQiD5Mghd26f9p5UHZ2cAODwdmNCbNtKTL1UraXYd6oSH/jU2YO0q08Jc6hh+2t6usnjZod3MC9b5HYLml06OOq61qFW9qwqMn3+kWL9/t1JCYSDW5rrxIKAbiDEFMJuLiKuSrmM7xnqb3MB/NTcDG/xfYpWaMXrBWjVMC9XAJwbv1KxZYyYkXEnQUOEIw9is6m3Hz/dJg4skxmYrwm/uuVeEN5XxOv2fUYE8TwHvVFubMPth8JpRBiXnr5lgtswOdCluVo0o3/d2KuH9Y8tAHpUzzFcWp0rOlYgmheYuz2DzgOwaGBNU9rFoOO3d06ryqNdrp1tfNCVAkP6bin/5tTh9FEb79snuO0EuvEzBxb/Szn9xMkNgeWwafAxVlPZqiE1/Qd719zfNWBJhPXRqGf3h3QLsbAjDj5cyvPXOvOzH/Sik+40/eELAswKNbIbLlGGiagtuG8XvnfsCRMs+pFe6gDICNEtEKwMxDxIz1tVhjp8J3ObDhTOaFJpGcYhpA2eCbF7AyBn6kYpU8Tw==
-  template:
-    metadata:
-      annotations:
-        sealedsecrets.bitnami.com/namespace-wide: "true"
-      name: openbao-unseal-keys
-      namespace: naira-platform-openbao
-    type: Opaque
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  PLACEHOLDER — REPLACE WITH REAL ENCRYPTED SECRET AFTER FIRST INIT     ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# This file must contain the openbao-unseal-keys Secret encrypted for this
+# cluster. It is cluster-specific and cannot be pre-generated.
+#
+# Run `make platform-openbao-init` first, then encrypt the resulting Secret
+# with your cluster's chosen encryption tool and commit the result here.
+#
+# ── SealedSecrets (kubeseal) ─────────────────────────────────────────────
+#
+#   kubeseal --fetch-cert --controller-namespace kube-system \
+#     > /tmp/sealed-secrets-cert.pem
+#
+#   kubectl get secret openbao-unseal-keys \
+#     -n naira-platform-openbao -o yaml \
+#     | kubeseal --cert /tmp/sealed-secrets-cert.pem \
+#         --scope namespace-wide -o yaml \
+#     > infrastructure/platform/openbao/unseal-keys-sealed.yaml
+#
+#   Then add unseal-keys-sealed.yaml to kustomization.yaml resources.
+#
+# ── SOPS + AGE ──────────────────────────────────────────────────────────
+#
+#   kubectl get secret openbao-unseal-keys \
+#     -n naira-platform-openbao -o yaml \
+#     | sops --encrypt \
+#         --input-type yaml \
+#         --output-type yaml \
+#         --age "$(cat ~/.config/sops/age/keys.txt | grep 'public key' | awk '{print $4}')" \
+#         /dev/stdin \
+#     > infrastructure/platform/openbao/unseal-keys-sealed.yaml
+#
+#   Add a .sops.yaml at the repo root to configure SOPS for automatic
+#   encryption/decryption on `kubectl apply`.
+#
+# ── After committing ─────────────────────────────────────────────────────
+#
+#   1. Add unseal-keys-sealed.yaml to resources in kustomization.yaml
+#   2. Apply: kubectl apply -k infrastructure/platform/openbao/
+#      (Flux will decrypt and create the Secret automatically)
+#   3. Restart the pod: kubectl rollout restart statefulset/openbao \
+#        -n naira-platform-openbao
+#
