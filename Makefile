@@ -128,20 +128,19 @@ FORCE            ?= false
         platform-openbao-reset platform-openbao-upgrade \
         testbed-openbao-status testbed-openbao-port-forward \
         testbed-openbao-seed-status testbed-openbao-inspect \
-        _openbao-wait-ready _openbao-run-init _openbao-run-seed \
-        _openbao-require-token
+        _openbao-apply-flux-kustomization _openbao-wait-ready _openbao-wait-eso-ready \
+        _openbao-run-init _openbao-run-seed _openbao-require-token
 
 ## [PLATFORM] Deploy the OpenBao platform component and ESO via Flux/Kustomize.
 platform-openbao-up:
 	@echo ">>> Applying OpenBao platform manifests (namespaces, HelmReleases, RBAC)..."
 	kubectl apply -k $(OPENBAO_DIR)/
-	@echo ">>> Applying Flux Kustomization CR (optional — requires Flux in cluster)..."
-	FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(OPENBAO_DIR)/flux-kustomization.yaml | kubectl apply -f - 2>/dev/null || \
-	  echo "    (Flux not available — manifests applied directly above)"
+	$(MAKE) _openbao-apply-flux-kustomization
 	@echo ">>> Waiting for ESO CRDs to be installed by Flux Helm controller..."
 	@until kubectl get crd clustersecretstores.external-secrets.io >/dev/null 2>&1; do \
 	  echo "    ... waiting for clustersecretstores CRD"; sleep 5; \
 	done
+	$(MAKE) _openbao-wait-eso-ready
 	@echo ">>> Applying ClusterSecretStore (requires ESO CRDs)..."
 	kubectl apply -f $(OPENBAO_DIR)/eso/clustersecretstore.yaml
 	@echo ""
@@ -249,6 +248,38 @@ _openbao-require-token:
 _openbao-wait-ready:
 	@echo ">>> Waiting for OpenBao pod to be ready (may take 60–90s on first deploy)..."
 	kubectl wait pod/openbao-0 -n $(OPENBAO_NS) --for=condition=Ready --timeout=180s
+
+_openbao-apply-flux-kustomization:
+	@echo ">>> Applying Flux Kustomization CR (optional — requires a Ready Flux source)..."
+	@ready=$$(kubectl get gitrepository $(FLUX_SOURCE) -n flux-system \
+	  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true); \
+	if [ "$$ready" = "True" ]; then \
+	  FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(OPENBAO_DIR)/flux-kustomization.yaml | kubectl apply -f -; \
+	else \
+	  echo "    (Flux source '$(FLUX_SOURCE)' is not Ready — manifests applied directly above)"; \
+	  echo "    To enable Flux reconciliation, fix or override FLUX_SOURCE and re-run this target."; \
+	fi
+
+_openbao-wait-eso-ready:
+	@echo ">>> Waiting for ESO webhook to become reachable..."
+	@until kubectl get helmrelease external-secrets -n external-secrets >/dev/null 2>&1; do \
+	  echo "    ... waiting for external-secrets HelmRelease"; sleep 5; \
+	done
+	kubectl wait helmrelease/external-secrets -n external-secrets \
+	  --for=condition=Ready --timeout=180s
+	@until kubectl get deployment external-secrets-webhook -n external-secrets >/dev/null 2>&1; do \
+	  echo "    ... waiting for external-secrets-webhook Deployment"; sleep 5; \
+	done
+	kubectl wait deployment/external-secrets-webhook -n external-secrets \
+	  --for=condition=Available --timeout=180s
+	@until kubectl get service external-secrets-webhook -n external-secrets >/dev/null 2>&1; do \
+	  echo "    ... waiting for external-secrets-webhook Service"; sleep 5; \
+	done
+	@until [ -n "$$(kubectl get endpointslice -n external-secrets \
+	  -l kubernetes.io/service-name=external-secrets-webhook \
+	  -o jsonpath='{.items[*].endpoints[*].addresses[*]}' 2>/dev/null)" ]; do \
+	  echo "    ... waiting for external-secrets-webhook EndpointSlice"; sleep 5; \
+	done
 
 _openbao-run-init:
 	@echo ">>> Deleting previous init job (if any)..."
