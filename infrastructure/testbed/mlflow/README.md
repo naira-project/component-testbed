@@ -92,13 +92,13 @@ If Flux is installed (source-controller + helm-controller), apply `flux-kustomiz
 
 ```bash
 # Substitute your GitRepository source name if different from 'component-testbed'
-FLUX_SOURCE=component-testbed envsubst < mlflow/flux-kustomization.yaml | kubectl apply -f -
+FLUX_SOURCE=component-testbed envsubst < infrastructure/testbed/mlflow/flux-kustomization.yaml | kubectl apply -f -
 
 # Check reconciliation state
 make testbed-mlflow-status
 ```
 
-Flux applies `mlflow/kustomization.yaml`, which creates a `GitRepository` for `mlflow/mlflow` and a `HelmRelease`. The helm-controller then installs the official chart from the pinned Git commit. Flux will re-apply automatically on every push.
+Flux applies `infrastructure/testbed/mlflow/kustomization.yaml`, which creates a `GitRepository` for `mlflow/mlflow` and a `HelmRelease`. The helm-controller then installs the official chart from the pinned Git commit. Flux will re-apply automatically on every push.
 
 ### Common Error: `GitRepository.source.toolkit.fluxcd.io "component-testbed" not found`
 
@@ -127,7 +127,7 @@ flux create source git component-testbed \
 make testbed-mlflow-up
 ```
 
-If you bootstrap Flux from this repository, Flux will usually create the matching source automatically. The important part is that the `spec.sourceRef.name` in `mlflow/flux-kustomization.yaml` must match a real `GitRepository` in `flux-system`.
+If you bootstrap Flux from this repository, Flux will usually create the matching source automatically. The important part is that the `spec.sourceRef.name` in `infrastructure/testbed/mlflow/flux-kustomization.yaml` must match a real `GitRepository` in `flux-system`.
 
 ## Architecture
 
@@ -148,9 +148,9 @@ No Ingress is configured. Use `make testbed-mlflow-port-forward` for local brows
 ## Manifest Layout
 
 ```
-mlflow/
+infrastructure/testbed/mlflow/
 ├── kustomization.yaml        # Namespace + GitRepository + HelmRelease
-├── flux-kustomization.yaml   # Flux Kustomization CR pointing to mlflow/
+├── flux-kustomization.yaml   # Flux Kustomization CR pointing to infrastructure/testbed/mlflow/
 ├── git-repository.yaml       # Flux GitRepository (mlflow/mlflow, pinned commit)
 ├── helm-release.yaml         # Flux HelmRelease for official chart path ./charts
 ├── namespace.yaml

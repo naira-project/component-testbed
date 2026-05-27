@@ -1,6 +1,7 @@
 # Flux GitRepository source name pointing to this repo.
 # Override if your GitRepository has a different name:
 #   FLUX_SOURCE=my-repo make testbed-mlflow-up
+#   FLUX_SOURCE=my-repo make platform-openbao-up
 FLUX_SOURCE ?= component-testbed
 
 # =============================================================================
@@ -8,7 +9,7 @@ FLUX_SOURCE ?= component-testbed
 # =============================================================================
 
 MLFLOW_NS        := naira-testbed-mlflow
-MLFLOW_DIR       := mlflow
+MLFLOW_DIR       := infrastructure/testbed/mlflow
 MLFLOW_SVC       := mlflow
 MLFLOW_PORT      := 5000
 
@@ -58,7 +59,7 @@ testbed-mlflow-status:
 	helm status $(MLFLOW_SVC) -n $(MLFLOW_NS) 2>/dev/null || echo "(Helm release not found)"
 	@echo ""
 	@echo "=== Flux Kustomization ==="
-	kubectl get kustomization naira-testbed-mlflow -n flux-system 2>/dev/null || echo "(Flux Kustomization not found — apply mlflow/flux-kustomization.yaml to enable Flux reconciliation)"
+	kubectl get kustomization naira-testbed-mlflow -n flux-system 2>/dev/null || echo "(Flux Kustomization not found — apply $(MLFLOW_DIR)/flux-kustomization.yaml to enable Flux reconciliation)"
 
 ## Open kubectl port-forward to http://127.0.0.1:5000.
 testbed-mlflow-port-forward:
@@ -135,7 +136,7 @@ platform-openbao-up:
 	@echo ">>> Applying OpenBao platform manifests (namespaces, HelmReleases, RBAC)..."
 	kubectl apply -k $(OPENBAO_DIR)/
 	@echo ">>> Applying Flux Kustomization CR (optional — requires Flux in cluster)..."
-	kubectl apply -f $(OPENBAO_DIR)/flux-kustomization.yaml 2>/dev/null || \
+	FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(OPENBAO_DIR)/flux-kustomization.yaml | kubectl apply -f - 2>/dev/null || \
 	  echo "    (Flux not available — manifests applied directly above)"
 	@echo ">>> Waiting for ESO CRDs to be installed by Flux Helm controller..."
 	@until kubectl get crd clustersecretstores.external-secrets.io >/dev/null 2>&1; do \
