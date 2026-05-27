@@ -233,7 +233,7 @@ make platform-openbao-upgrade
 5. **Seed OpenBao**:
    ```bash
    cp .env.testbed.example .env.testbed
-   # Fill in the values you have; leave others blank to skip those paths
+   # Fill in complete credential bundles; blank required fields skip those paths
    make platform-openbao-seed
    ```
 
@@ -242,7 +242,7 @@ make platform-openbao-upgrade
 ```bash
 # Edit .env.testbed to add new values, then:
 make platform-openbao-seed
-# Existing paths are preserved. Only blank entries are skipped.
+# Existing paths are preserved. Blank or incomplete entries are skipped.
 # To overwrite existing values:
 make platform-openbao-seed FORCE=true
 ```
