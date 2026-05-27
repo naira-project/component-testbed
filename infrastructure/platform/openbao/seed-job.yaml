@@ -108,7 +108,7 @@ data:
     echo "=== OpenBao Platform Seed ==="
     echo ""
     echo "--- Waiting for OpenBao to be unsealed..."
-    until bao status -format=json 2>/dev/null | grep -q '"sealed":false'; do
+    until bao status -format=json 2>/dev/null | grep -Eq '"sealed"[[:space:]]*:[[:space:]]*false'; do
       sleep 3
     done
     echo "    OpenBao unsealed."
@@ -175,7 +175,7 @@ data:
     log "WRITE          secret/demo/hello"
 
     bao kv put secret/demo/connection \
-      host="openbao-active.naira-platform-openbao.svc.cluster.local" \
+      host="openbao.naira-platform-openbao.svc.cluster.local" \
       port="8200" \
       tls="false"
     log "WRITE          secret/demo/connection"
@@ -268,7 +268,7 @@ spec:
           image: openbao/openbao:2.5.3
           env:
             - name: BAO_ADDR
-              value: "http://openbao-active.naira-platform-openbao.svc.cluster.local:8200"
+              value: "http://openbao.naira-platform-openbao.svc.cluster.local:8200"
             - name: BAO_TOKEN
               valueFrom:
                 secretKeyRef:

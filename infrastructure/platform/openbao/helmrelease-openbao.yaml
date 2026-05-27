@@ -85,7 +85,9 @@ spec:
               echo "unsealer: OpenBao reachable, entering unseal loop"
               while true; do
                 STATUS=$(bao status -format=json 2>/dev/null || echo '{"sealed":true}')
-                if echo "$STATUS" | grep -q '"sealed":true'; then
+                if ! echo "$STATUS" | grep -Eq '"initialized"[[:space:]]*:[[:space:]]*true'; then
+                  echo "unsealer: OpenBao is not initialized yet; waiting for platform-openbao-init"
+                elif echo "$STATUS" | grep -Eq '"sealed"[[:space:]]*:[[:space:]]*true'; then
                   echo "unsealer: unsealing..."
                   bao operator unseal "$UNSEAL_KEY" && echo "unsealer: unsealed." || true
                 fi

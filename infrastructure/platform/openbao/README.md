@@ -259,15 +259,21 @@ make testbed-openbao-status  # seal status should be false
 
 ### Recovering from a wiped cluster
 
-If the cluster is fully wiped but the encrypted `unseal-keys-sealed.yaml` is in Git:
+The encrypted `unseal-keys-sealed.yaml` only unlocks an existing OpenBao data
+store. It does not initialize a fresh, empty `/openbao/data` volume.
+
+If the cluster control plane was wiped but the OpenBao persistent volume was
+preserved:
 
 1. Re-apply the platform manifests: `make platform-openbao-up`
 2. Flux (or manual `kubectl apply`) decrypts and recreates `openbao-unseal-keys`
 3. Pod starts → unsealer sidecar reads key → unseals automatically
 4. Re-run seed: `make platform-openbao-seed`
 
-If `unseal-keys-sealed.yaml` was never committed, you must re-initialize from scratch:
-`make platform-openbao-reset` then follow the first-time setup steps.
+If the OpenBao persistent volume was deleted, the stored key no longer belongs
+to the new empty OpenBao data store. Re-initialize from scratch:
+`make platform-openbao-reset`, then `make platform-openbao-init`, then encrypt
+and commit the new `openbao-unseal-keys` Secret.
 
 ---
 
