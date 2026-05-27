@@ -13,9 +13,18 @@ MLFLOW_DIR       := infrastructure/testbed/mlflow
 MLFLOW_SVC       := mlflow
 MLFLOW_PORT      := 5000
 
+LITELLM_NS       := naira-testbed-litellm
+LITELLM_DIR      := infrastructure/testbed/litellm
+LITELLM_SVC      := litellm
+LITELLM_PORT     := 4000
+
 .PHONY: testbed-mlflow-up testbed-mlflow-down testbed-mlflow-reset \
         testbed-mlflow-status testbed-mlflow-port-forward testbed-mlflow-seed \
-        _mlflow-run-seed _mlflow-check-flux-source
+        _mlflow-run-seed _mlflow-check-flux-source \
+        testbed-litellm-up testbed-litellm-down testbed-litellm-reset \
+        testbed-litellm-status testbed-litellm-port-forward testbed-litellm-smoke \
+        testbed-litellm-secret-scan \
+        _litellm-run-smoke _litellm-check-flux-source
 
 ## Provision MLflow testbed: deploy + seed sample data.
 testbed-mlflow-up:
@@ -332,3 +341,93 @@ _openbao-run-seed:
 	kubectl delete secret openbao-seed-input -n $(OPENBAO_NS) --ignore-not-found
 	$(MAKE) _openbao-reconcile-clustersecretstore
 	@echo ">>> Seed job finished."
+
+## Provision LiteLLM testbed: deploy via Flux + run smoke test.
+testbed-litellm-up:
+	@$(MAKE) _litellm-check-flux-source
+	@echo ">>> Applying Flux Kustomization..."
+	FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(LITELLM_DIR)/flux-kustomization.yaml | kubectl apply -f -
+	@echo ">>> Waiting for Flux reconciliation..."
+	kubectl wait --for=condition=ready kustomization/$(LITELLM_NS) -n flux-system --timeout=300s
+	@echo ">>> Running LiteLLM smoke test..."
+	$(MAKE) _litellm-run-smoke
+	@echo ""
+	@echo "LiteLLM testbed is up."
+	@echo "  API: make testbed-litellm-port-forward  ->  http://127.0.0.1:$(LITELLM_PORT)"
+	@echo "  In cluster: http://$(LITELLM_SVC).$(LITELLM_NS).svc.cluster.local:$(LITELLM_PORT)"
+
+## Tear down LiteLLM testbed: delete namespace and all resources.
+testbed-litellm-down:
+	@echo ">>> Removing Flux Kustomization..."
+	kubectl delete kustomization $(LITELLM_NS) -n flux-system --ignore-not-found
+	@echo ">>> Uninstalling LiteLLM Helm release..."
+	helm uninstall $(LITELLM_SVC) -n $(LITELLM_NS) 2>/dev/null || true
+	@echo ">>> Deleting namespace $(LITELLM_NS)..."
+	kubectl delete namespace $(LITELLM_NS) --ignore-not-found --wait=true
+	@echo "LiteLLM testbed removed."
+
+## Full teardown + recreate from scratch.
+testbed-litellm-reset: testbed-litellm-down testbed-litellm-up
+
+## Show pod status, service, ExternalSecret, Helm release, and Flux state.
+testbed-litellm-status:
+	@echo "=== Pods ==="
+	kubectl get pods -n $(LITELLM_NS) 2>/dev/null || echo "(namespace not found)"
+	@echo ""
+	@echo "=== Services ==="
+	kubectl get svc -n $(LITELLM_NS) 2>/dev/null || true
+	@echo ""
+	@echo "=== ExternalSecret ==="
+	kubectl get externalsecret litellm-mistral-api-key -n $(LITELLM_NS) 2>/dev/null || echo "(ExternalSecret not found)"
+	@echo ""
+	@echo "=== OCI source ==="
+	kubectl get ocirepository litellm -n flux-system 2>/dev/null || echo "(OCIRepository not found)"
+	@echo ""
+	@echo "=== Helm release ==="
+	helm status $(LITELLM_SVC) -n $(LITELLM_NS) 2>/dev/null || echo "(Helm release not found)"
+	@echo ""
+	@echo "=== Flux Kustomization ==="
+	kubectl get kustomization $(LITELLM_NS) -n flux-system 2>/dev/null || echo "(Flux Kustomization not found — apply $(LITELLM_DIR)/flux-kustomization.yaml to enable Flux reconciliation)"
+
+## Open kubectl port-forward to http://127.0.0.1:4000.
+testbed-litellm-port-forward:
+	@echo ">>> Forwarding http://127.0.0.1:$(LITELLM_PORT) -> svc/$(LITELLM_SVC):$(LITELLM_PORT)"
+	@echo "    Press Ctrl+C to stop."
+	kubectl port-forward svc/$(LITELLM_SVC) $(LITELLM_PORT):$(LITELLM_PORT) -n $(LITELLM_NS)
+
+## Run chat + embeddings smoke test through LiteLLM.
+testbed-litellm-smoke:
+	$(MAKE) _litellm-run-smoke
+
+## Check LiteLLM manifests for plaintext API key values.
+testbed-litellm-secret-scan:
+	@echo ">>> Checking $(LITELLM_DIR) for plaintext LiteLLM API keys..."
+	@awk '/api_key:/ && $$0 !~ /os.environ\/MISTRAL_API_KEY/ { print FILENAME ":" FNR ":" $$0; found=1 } END { exit found }' $(LITELLM_DIR)/*.yaml
+	@echo "No plaintext LiteLLM api_key values found."
+
+_litellm-check-flux-source:
+	@kubectl get gitrepository $(FLUX_SOURCE) -n flux-system >/dev/null 2>&1 || { \
+		echo "ERROR: Flux GitRepository '$(FLUX_SOURCE)' was not found in namespace 'flux-system'."; \
+		echo ""; \
+		echo "make testbed-litellm-up applies a Flux Kustomization that expects an existing"; \
+		echo "GitRepository source pointing at this repository."; \
+		echo ""; \
+		echo "Fix one of these first:"; \
+		echo "  1. Reuse an existing Flux source:"; \
+		echo "     FLUX_SOURCE=<existing-gitrepository> make testbed-litellm-up"; \
+		echo "  2. Create a Flux source for this repo in flux-system, for example:"; \
+		echo "     flux create source git $(FLUX_SOURCE) --url=<repo-url> --branch=<branch> --namespace=flux-system"; \
+		echo ""; \
+		echo "You can inspect available sources with:"; \
+		echo "  kubectl get gitrepositories -n flux-system"; \
+		exit 1; \
+	}
+
+_litellm-run-smoke:
+	@echo ">>> Deleting previous smoke test job (if any)..."
+	kubectl delete job litellm-smoke-test -n $(LITELLM_NS) --ignore-not-found
+	@echo ">>> Applying smoke test job..."
+	kubectl apply -f $(LITELLM_DIR)/smoke-test-job.yaml -n $(LITELLM_NS)
+	@echo ">>> Waiting for smoke test to complete..."
+	kubectl wait --for=condition=complete job/litellm-smoke-test -n $(LITELLM_NS) --timeout=180s
+	@echo ">>> Smoke test finished."
