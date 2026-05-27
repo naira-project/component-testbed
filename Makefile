@@ -129,7 +129,8 @@ FORCE            ?= false
         testbed-openbao-status testbed-openbao-port-forward \
         testbed-openbao-seed-status testbed-openbao-inspect \
         _openbao-apply-flux-kustomization _openbao-wait-ready _openbao-wait-eso-ready \
-        _openbao-run-init _openbao-run-seed _openbao-require-token
+        _openbao-reconcile-clustersecretstore _openbao-run-init \
+        _openbao-run-seed _openbao-require-token
 
 ## [PLATFORM] Deploy the OpenBao platform component and ESO via Flux/Kustomize.
 platform-openbao-up:
@@ -281,6 +282,16 @@ _openbao-wait-eso-ready:
 	  echo "    ... waiting for external-secrets-webhook EndpointSlice"; sleep 5; \
 	done
 
+_openbao-reconcile-clustersecretstore:
+	@echo ">>> Reconciling ClusterSecretStore after OpenBao auth changes..."
+	@if kubectl get clustersecretstore openbao-platform >/dev/null 2>&1; then \
+	  kubectl annotate clustersecretstore openbao-platform \
+	    reconcile.external-secrets.io/force=$$(date +%s) --overwrite; \
+	  kubectl wait --for=condition=Ready clustersecretstore/openbao-platform --timeout=60s; \
+	else \
+	  echo "    (ClusterSecretStore openbao-platform not found — skipping)"; \
+	fi
+
 _openbao-run-init:
 	@echo ">>> Deleting previous init job (if any)..."
 	kubectl delete job openbao-init -n $(OPENBAO_NS) --ignore-not-found
@@ -319,4 +330,5 @@ _openbao-run-seed:
 	kubectl wait --for=condition=complete job/openbao-seed -n $(OPENBAO_NS) --timeout=180s
 	@echo ">>> Cleaning up openbao-seed-input Secret..."
 	kubectl delete secret openbao-seed-input -n $(OPENBAO_NS) --ignore-not-found
+	$(MAKE) _openbao-reconcile-clustersecretstore
 	@echo ">>> Seed job finished."
