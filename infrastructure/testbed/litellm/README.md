@@ -2,7 +2,7 @@
 
 Reproducible LiteLLM Proxy for developing and testing the Naira LiteLLM plugin against real in-cluster networking and the live Mistral API.
 
-Deployed as a Kubernetes workload in namespace `naira-testbed-litellm`, reconciled by Flux, using the official LiteLLM Helm chart `oci://docker.litellm.ai/berriai/litellm-helm` at tag `1.86.1`.
+Deployed as a Kubernetes workload in namespace `naira-testbed-litellm`, reconciled by Flux, using the official LiteLLM Helm chart `oci://docker.litellm.ai/berriai/litellm-helm` at tag `1.82.3`.
 
 ## Purpose
 
@@ -46,15 +46,15 @@ make testbed-litellm-down
 
 ## Commands
 
-| Command                             | Description                                           |
-| ----------------------------------- | ----------------------------------------------------- |
-| `make testbed-litellm-up`           | Deploy LiteLLM through Flux and run the smoke test    |
+| Command                             | Description                                                |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `make testbed-litellm-up`           | Deploy LiteLLM through Flux and run the smoke test         |
 | `make testbed-litellm-down`         | Delete the Flux Kustomization, Helm release, and namespace |
-| `make testbed-litellm-reset`        | Tear down and recreate from scratch                   |
-| `make testbed-litellm-status`       | Show pods, service, ExternalSecret, Helm, and Flux state |
-| `make testbed-litellm-port-forward` | Forward `localhost:4000` to the LiteLLM service       |
-| `make testbed-litellm-smoke`        | Re-run the chat completion and embeddings smoke test  |
-| `make testbed-litellm-secret-scan`  | Check manifests for plaintext LiteLLM `api_key` values |
+| `make testbed-litellm-reset`        | Tear down and recreate from scratch                        |
+| `make testbed-litellm-status`       | Show pods, service, ExternalSecret, Helm, and Flux state   |
+| `make testbed-litellm-port-forward` | Forward `localhost:4000` to the LiteLLM service            |
+| `make testbed-litellm-smoke`        | Re-run the chat completion and embeddings smoke test       |
+| `make testbed-litellm-secret-scan`  | Check manifests for plaintext LiteLLM `api_key` values     |
 
 ## Mistral Key Provisioning
 
@@ -84,12 +84,12 @@ kubectl get externalsecret litellm-mistral-api-key -n naira-testbed-litellm
 
 ## Seeded Routes
 
-| Alias             | Upstream model                  | Type              | Provider |
-| ----------------- | ------------------------------- | ----------------- | -------- |
-| `chat-small`      | `mistral/mistral-small-latest`  | Chat completions  | Mistral  |
-| `chat-large`      | `mistral/mistral-large-latest`  | Chat completions  | Mistral  |
-| `chat-codestral`  | `mistral/codestral-latest`      | Chat completions  | Mistral  |
-| `text-embeddings` | `mistral/mistral-embed`         | Embeddings        | Mistral  |
+| Alias             | Upstream model                 | Type             | Provider |
+| ----------------- | ------------------------------ | ---------------- | -------- |
+| `chat-small`      | `mistral/mistral-small-latest` | Chat completions | Mistral  |
+| `chat-large`      | `mistral/mistral-large-latest` | Chat completions | Mistral  |
+| `chat-codestral`  | `mistral/codestral-latest`     | Chat completions | Mistral  |
+| `text-embeddings` | `mistral/mistral-embed`        | Embeddings       | Mistral  |
 
 List routes:
 
