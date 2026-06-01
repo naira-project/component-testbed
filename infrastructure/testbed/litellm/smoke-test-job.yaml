@@ -19,6 +19,12 @@ spec:
       containers:
         - name: smoke-test
           image: curlimages/curl:8.11.1
+          env:
+            - name: PROXY_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-masterkey
+                  key: masterkey
           command:
             - /bin/sh
             - -ec
@@ -37,15 +43,20 @@ spec:
                 sleep 2
               done
 
-              curl -fsS "${base_url}/v1/models" | grep -q '"chat-small"'
+              curl -fsS \
+                -H "Authorization: Bearer ${PROXY_MASTER_KEY}" \
+                "${base_url}/v1/models" \
+                | grep -q '"chat-small"'
 
               curl -fsS \
+                -H "Authorization: Bearer ${PROXY_MASTER_KEY}" \
                 -H 'Content-Type: application/json' \
                 -X POST "${base_url}/v1/chat/completions" \
                 -d '{"model":"chat-small","messages":[{"role":"user","content":"ping"}]}' \
                 | grep -q '"choices"'
 
               curl -fsS \
+                -H "Authorization: Bearer ${PROXY_MASTER_KEY}" \
                 -H 'Content-Type: application/json' \
                 -X POST "${base_url}/v1/embeddings" \
                 -d '{"model":"text-embeddings","input":"test"}' \
