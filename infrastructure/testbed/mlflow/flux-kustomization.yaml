@@ -10,7 +10,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 5m
-  path: ./mlflow
+  path: ./infrastructure/testbed/mlflow
   prune: true
   wait: true
   timeout: 3m
