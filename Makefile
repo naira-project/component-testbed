@@ -402,7 +402,7 @@ testbed-litellm-smoke:
 ## Check LiteLLM manifests for plaintext API key values.
 testbed-litellm-secret-scan:
 	@echo ">>> Checking $(LITELLM_DIR) for plaintext LiteLLM API keys..."
-	@awk '/api_key:/ && $$0 !~ /os.environ\/MISTRAL_API_KEY/ { print FILENAME ":" FNR ":" $$0; found=1 } END { exit found }' $(LITELLM_DIR)/*.yaml
+	@awk '/api_key:/ && $$0 !~ /os.environ\// { print FILENAME ":" FNR ":" $$0; found=1 } END { exit found }' $(LITELLM_DIR)/*.yaml
 	@echo "No plaintext LiteLLM api_key values found."
 
 _litellm-check-flux-source:
