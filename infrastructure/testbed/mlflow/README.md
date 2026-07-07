@@ -137,7 +137,8 @@ naira-testbed-mlflow namespace
 │     image: ghcr.io/mlflow/mlflow:v3.12.0-full
 │     backend: SQLite at /mlflow/mlflow.db
 │     artifacts: /mlflow/artifacts (proxied through server)
-│     resources: 250m CPU, 2Gi–4Gi RAM
+│     workers: 1; BLAS/math libraries capped to one thread per process
+│     resources: 500m–2 CPU, 512Mi–2Gi RAM
 ├── Service/mlflow             — ClusterIP :5000
 ├── PersistentVolumeClaim/mlflow — 1Gi (data survives pod restarts)
 └── Job/mlflow-seed            — one-shot Python seed job (idempotent)

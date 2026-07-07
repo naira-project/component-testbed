@@ -280,6 +280,16 @@ spec:
                   env:
                       - name: MLFLOW_TRACKING_URI
                         value: "http://mlflow.naira-testbed-mlflow.svc.cluster.local:5000"
+                      - name: OPENBLAS_NUM_THREADS
+                        value: "1"
+                      - name: OMP_NUM_THREADS
+                        value: "1"
+                      - name: MKL_NUM_THREADS
+                        value: "1"
+                      - name: NUMEXPR_NUM_THREADS
+                        value: "1"
+                      - name: VECLIB_MAXIMUM_THREADS
+                        value: "1"
                   resources:
                       requests:
                           memory: 128Mi

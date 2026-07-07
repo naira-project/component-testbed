@@ -18,10 +18,21 @@ spec:
       value_options:
         host: 0.0.0.0
         port: 5000
-        workers: 4
+        workers: 1
         allowed_hosts: "*"
       flag_options:
         - serve_artifacts
+    env:
+      - name: OPENBLAS_NUM_THREADS
+        value: "1"
+      - name: OMP_NUM_THREADS
+        value: "1"
+      - name: MKL_NUM_THREADS
+        value: "1"
+      - name: NUMEXPR_NUM_THREADS
+        value: "1"
+      - name: VECLIB_MAXIMUM_THREADS
+        value: "1"
     mlflow:
       backendStoreUri: sqlite:////mlflow/mlflow.db
       defaultArtifactRoot: /mlflow/artifacts
@@ -33,9 +44,16 @@ spec:
       size: 1Gi
       accessMode: ReadWriteOnce
       mountPath: /mlflow
+    metrics:
+      enabled: false
+    garbageCollection:
+      enabled: true
+      schedule: "0 2 * * 0"
+      olderThan: "30d"
     resources:
       requests:
-        memory: 2Gi
-        cpu: 250m
+        cpu: 500m
+        memory: 512Mi
       limits:
-        memory: 4Gi
+        cpu: 2000m
+        memory: 2Gi
