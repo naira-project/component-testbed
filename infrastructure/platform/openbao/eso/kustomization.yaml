@@ -6,6 +6,6 @@ resources:
   - helmrepository.yaml
   - helmrelease.yaml
   - rbac.yaml
-  # clustersecretstore.yaml is NOT listed here — it requires ESO CRDs which are
+  # clustersecretstore/ is NOT listed here — it requires ESO CRDs which are
   # installed by the HelmRelease above. Apply it after the HelmRelease is ready:
   #   make platform-openbao-up  (handles the ordering automatically)

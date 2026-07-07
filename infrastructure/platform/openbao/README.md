@@ -79,6 +79,8 @@ OpenBao. It is part of the same platform Kustomization.
 A single `ClusterSecretStore` named `openbao-platform` is available cluster-wide.
 Any namespace can reference it from `ExternalSecret` resources to project OpenBao
 KV v2 secrets into native Kubernetes Secrets.
+It is reconciled from `infrastructure/platform/openbao/eso/clustersecretstore`
+after the ESO CRDs are available.
 
 ESO authenticates to OpenBao via the Kubernetes auth method: it presents its own
 ServiceAccount token; OpenBao verifies it against the cluster's TokenReview API.

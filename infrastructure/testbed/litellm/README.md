@@ -17,6 +17,8 @@ The Naira LiteLLM plugin will discover LiteLLM routes and translate them into Na
 - Flux installed with source-controller and helm-controller
 - External Secrets Operator installed
 - A `ClusterSecretStore` named `openbao-platform`
+  - Create it with `make platform-openbao-up`; the target installs OpenBao, ESO,
+    and the Flux Kustomization for the store.
 - A Flux `GitRepository` in `flux-system` that points to this repo
   - By default, `make testbed-litellm-up` expects that source to be named `component-testbed`
   - If your source has a different name, pass it via `FLUX_SOURCE=<name>`

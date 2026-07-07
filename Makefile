@@ -128,6 +128,7 @@ _mlflow-run-seed:
 
 OPENBAO_NS       := naira-platform-openbao
 OPENBAO_DIR      := infrastructure/platform/openbao
+OPENBAO_STORE_DIR := $(OPENBAO_DIR)/eso/clustersecretstore
 OPENBAO_SVC      := openbao-active
 OPENBAO_API_PORT := 8200
 # Pass FORCE=true to overwrite existing secrets: make platform-openbao-seed FORCE=true
@@ -152,7 +153,7 @@ platform-openbao-up:
 	done
 	$(MAKE) _openbao-wait-eso-ready
 	@echo ">>> Applying ClusterSecretStore (requires ESO CRDs)..."
-	kubectl apply -f $(OPENBAO_DIR)/eso/clustersecretstore.yaml
+	kubectl apply -f $(OPENBAO_STORE_DIR)/clustersecretstore.yaml
 	@echo ""
 	@echo "OpenBao platform component applied."
 	@echo "  OpenBao will start but remain sealed until you run:"
@@ -265,6 +266,7 @@ _openbao-apply-flux-kustomization:
 	  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true); \
 	if [ "$$ready" = "True" ]; then \
 	  FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(OPENBAO_DIR)/flux-kustomization.yaml | kubectl apply -f -; \
+	  FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(OPENBAO_DIR)/flux-kustomization-secretstore.yaml | kubectl apply -f -; \
 	else \
 	  echo "    (Flux source '$(FLUX_SOURCE)' is not Ready — manifests applied directly above)"; \
 	  echo "    To enable Flux reconciliation, fix or override FLUX_SOURCE and re-run this target."; \

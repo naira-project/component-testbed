@@ -14,6 +14,8 @@ spec:
   prune: true
   wait: true
   timeout: 5m
+  dependsOn:
+    - name: naira-platform-openbao-secretstore
   sourceRef:
     kind: GitRepository
     name: ${FLUX_SOURCE}
