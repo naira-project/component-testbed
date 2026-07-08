@@ -2,7 +2,7 @@
 
 Reproducible MLflow Tracking Server and Model Registry for developing and testing the Naira MLflow Sync Plugin.
 
-Deployed as a Kubernetes workload in namespace `naira-testbed-mlflow`, reconciled by Flux.
+Deployed as a Kubernetes workload in namespace `naira-testbed-mlflow` by default, reconciled by Flux.
 
 ## Purpose
 
@@ -24,6 +24,9 @@ The Naira MLflow Sync Controller translates MLflow Registered Models and Model V
 ```bash
 # Reconcile MLflow via Flux and seed sample data (~2 min)
 make testbed-mlflow-up
+
+# Optional: use a developer-owned namespace
+NS=my-mlflow make testbed-mlflow-up
 
 # Access the UI locally
 make testbed-mlflow-port-forward
