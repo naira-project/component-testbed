@@ -4,16 +4,23 @@
 #   FLUX_SOURCE=my-repo make platform-openbao-up
 FLUX_SOURCE ?= component-testbed
 
+# Override the target namespace for developer-owned testbed instances:
+#   NS=my-litellm make testbed-litellm-up
+#   NS=my-mlflow make testbed-mlflow-up
+NS ?=
+
 # =============================================================================
 # MLflow testbed
 # =============================================================================
 
-MLFLOW_NS        := naira-testbed-mlflow
+MLFLOW_DEFAULT_NS := naira-testbed-mlflow
+MLFLOW_NS        := $(if $(NS),$(NS),$(MLFLOW_DEFAULT_NS))
 MLFLOW_DIR       := infrastructure/testbed/mlflow
 MLFLOW_SVC       := mlflow
 MLFLOW_PORT      := 5000
 
-LITELLM_NS       := naira-testbed-litellm
+LITELLM_DEFAULT_NS := naira-testbed-litellm
+LITELLM_NS       := $(if $(NS),$(NS),$(LITELLM_DEFAULT_NS))
 LITELLM_DIR      := infrastructure/testbed/litellm
 LITELLM_SVC      := litellm
 LITELLM_PORT     := 4000
@@ -30,7 +37,7 @@ LITELLM_PORT     := 4000
 testbed-mlflow-up:
 	@$(MAKE) _mlflow-check-flux-source
 	@echo ">>> Applying Flux Kustomization..."
-	FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(MLFLOW_DIR)/flux-kustomization.yaml | kubectl apply -f -
+	FLUX_SOURCE=$(FLUX_SOURCE) MLFLOW_NS=$(MLFLOW_NS) envsubst '$$FLUX_SOURCE $$MLFLOW_NS' < $(MLFLOW_DIR)/flux-kustomization.yaml | kubectl apply -f -
 	@echo ">>> Waiting for Flux reconciliation..."
 	kubectl wait --for=condition=ready kustomization/$(MLFLOW_NS) -n flux-system --timeout=180s
 	@echo ">>> Running seed job..."
@@ -68,7 +75,7 @@ testbed-mlflow-status:
 	helm status $(MLFLOW_SVC) -n $(MLFLOW_NS) 2>/dev/null || echo "(Helm release not found)"
 	@echo ""
 	@echo "=== Flux Kustomization ==="
-	kubectl get kustomization naira-testbed-mlflow -n flux-system 2>/dev/null || echo "(Flux Kustomization not found — apply $(MLFLOW_DIR)/flux-kustomization.yaml to enable Flux reconciliation)"
+	kubectl get kustomization $(MLFLOW_NS) -n flux-system 2>/dev/null || echo "(Flux Kustomization not found — run 'NS=$(MLFLOW_NS) make testbed-mlflow-up' to enable Flux reconciliation)"
 
 ## Open kubectl port-forward to http://127.0.0.1:5000.
 testbed-mlflow-port-forward:
@@ -104,7 +111,7 @@ _mlflow-run-seed:
 	@echo ">>> Deleting previous seed job (if any)..."
 	kubectl delete job mlflow-seed -n $(MLFLOW_NS) --ignore-not-found
 	@echo ">>> Applying seed job..."
-	kubectl apply -f $(MLFLOW_DIR)/seed-job.yaml -n $(MLFLOW_NS)
+	MLFLOW_NS=$(MLFLOW_NS) envsubst '$$MLFLOW_NS' < $(MLFLOW_DIR)/seed-job.yaml | kubectl apply -n $(MLFLOW_NS) -f -
 	@echo ">>> Waiting for seed job to complete..."
 	kubectl wait --for=condition=complete job/mlflow-seed -n $(MLFLOW_NS) --timeout=120s
 	@echo ">>> Seed job finished."
@@ -348,7 +355,7 @@ _openbao-run-seed:
 testbed-litellm-up:
 	@$(MAKE) _litellm-check-flux-source
 	@echo ">>> Applying Flux Kustomization..."
-	FLUX_SOURCE=$(FLUX_SOURCE) envsubst < $(LITELLM_DIR)/flux-kustomization.yaml | kubectl apply -f -
+	FLUX_SOURCE=$(FLUX_SOURCE) LITELLM_NS=$(LITELLM_NS) envsubst '$$FLUX_SOURCE $$LITELLM_NS' < $(LITELLM_DIR)/flux-kustomization.yaml | kubectl apply -f -
 	@echo ">>> Waiting for Flux reconciliation..."
 	kubectl wait --for=condition=ready kustomization/$(LITELLM_NS) -n flux-system --timeout=300s
 	@echo ">>> Running LiteLLM smoke test..."
@@ -429,7 +436,7 @@ _litellm-run-smoke:
 	@echo ">>> Deleting previous smoke test job (if any)..."
 	kubectl delete job litellm-smoke-test -n $(LITELLM_NS) --ignore-not-found
 	@echo ">>> Applying smoke test job..."
-	kubectl apply -f $(LITELLM_DIR)/smoke-test-job.yaml -n $(LITELLM_NS)
+	LITELLM_NS=$(LITELLM_NS) envsubst '$$LITELLM_NS' < $(LITELLM_DIR)/smoke-test-job.yaml | kubectl apply -n $(LITELLM_NS) -f -
 	@echo ">>> Waiting for smoke test to complete..."
 	kubectl wait --for=condition=complete job/litellm-smoke-test -n $(LITELLM_NS) --timeout=180s
 	@echo ">>> Smoke test finished."

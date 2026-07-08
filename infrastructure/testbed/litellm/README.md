@@ -2,7 +2,7 @@
 
 Reproducible LiteLLM Proxy for developing and testing the Naira LiteLLM plugin against real in-cluster networking and the live Mistral API.
 
-Deployed as a Kubernetes workload in namespace `naira-testbed-litellm`, reconciled by Flux, using the official LiteLLM Helm chart `oci://docker.litellm.ai/berriai/litellm-helm` at tag `1.82.3`.
+Deployed as a Kubernetes workload in namespace `naira-testbed-litellm` by default, reconciled by Flux, using the official LiteLLM Helm chart `oci://docker.litellm.ai/berriai/litellm-helm` at tag `1.82.3`.
 
 ## Purpose
 
@@ -29,6 +29,9 @@ The Naira LiteLLM plugin will discover LiteLLM routes and translate them into Na
 ```bash
 # Reconcile LiteLLM via Flux and run chat + embeddings smoke tests
 make testbed-litellm-up
+
+# Optional: use a developer-owned namespace
+NS=my-litellm make testbed-litellm-up
 
 # Access the API locally
 make testbed-litellm-port-forward
